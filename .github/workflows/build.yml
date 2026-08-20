@@ -35,6 +35,7 @@ jobs:
               run: |
                   base_image="$(jq -r '.build_from.aarch64' diyhue/build.json)"
                   version="$(jq -r '.version' diyhue/config.json)"
+                  docker_init="$(jq -r '.init' diyhue/config.json)"
 
                   if [[ -z "${base_image}" || "${base_image}" == "null" ]]; then
                       echo "Missing aarch64 base image in diyhue/build.json" >&2
@@ -43,6 +44,11 @@ jobs:
 
                   if [[ -z "${version}" || "${version}" == "null" ]]; then
                       echo "Missing add-on version in diyhue/config.json" >&2
+                      exit 1
+                  fi
+
+                  if [[ "${docker_init}" != "false" ]]; then
+                      echo "diyhue/config.json must set init to false for S6 Overlay" >&2
                       exit 1
                   fi
 
