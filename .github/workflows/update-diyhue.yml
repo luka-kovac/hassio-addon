@@ -1,0 +1,91 @@
+name: Update diyHue core
+
+on:
+    schedule:
+        - cron: "17 3 * * *"
+    workflow_dispatch:
+
+permissions:
+    contents: write
+
+concurrency:
+    group: update-diyhue-core
+    cancel-in-progress: false
+
+jobs:
+    update:
+        name: Update pinned diyHue commit
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        steps:
+            - name: Check out add-on repository
+              uses: actions/checkout@v4
+              with:
+                  ref: master
+
+            - name: Check upstream master
+              id: upstream
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              shell: bash
+              run: |
+                  upstream_sha="$(
+                      curl --fail --silent --show-error \
+                          --header "Authorization: Bearer ${GH_TOKEN}" \
+                          --header "X-GitHub-Api-Version: 2022-11-28" \
+                          https://api.github.com/repos/diyhue/diyHue/commits/master \
+                      | jq -r '.sha'
+                  )"
+                  current_sha="$(sed -n 's/^ENV DIYHUE_COMMIT=//p' diyhue/Dockerfile)"
+
+                  if [[ ! "${upstream_sha}" =~ ^[0-9a-f]{40}$ ]]; then
+                      echo "Upstream returned an invalid commit SHA: ${upstream_sha}" >&2
+                      exit 1
+                  fi
+
+                  if [[ ! "${current_sha}" =~ ^[0-9a-f]{40}$ ]]; then
+                      echo "Dockerfile contains an invalid commit SHA: ${current_sha}" >&2
+                      exit 1
+                  fi
+
+                  if [[ "${upstream_sha}" == "${current_sha}" ]]; then
+                      echo "diyHue is already pinned to ${upstream_sha}."
+                      echo "changed=false" >> "${GITHUB_OUTPUT}"
+                      exit 0
+                  fi
+
+                  sed -i "s/^ENV DIYHUE_COMMIT=.*/ENV DIYHUE_COMMIT=${upstream_sha}/" diyhue/Dockerfile
+                  echo "sha=${upstream_sha}" >> "${GITHUB_OUTPUT}"
+                  echo "changed=true" >> "${GITHUB_OUTPUT}"
+
+            - name: Increment add-on version
+              if: steps.upstream.outputs.changed == 'true'
+              shell: bash
+              run: |
+                  python3 - <<'PY'
+                  import json
+                  from pathlib import Path
+
+                  path = Path("diyhue/config.json")
+                  config = json.loads(path.read_text())
+                  parts = config["version"].split(".")
+
+                  if len(parts) != 3 or not all(part.isdigit() for part in parts):
+                      raise ValueError(f'Expected numeric x.y.z version, got {config["version"]!r}')
+
+                  parts[-1] = str(int(parts[-1]) + 1)
+                  config["version"] = ".".join(parts)
+                  path.write_text(json.dumps(config, indent=4) + "\n")
+                  PY
+
+            - name: Commit update
+              if: steps.upstream.outputs.changed == 'true'
+              env:
+                  UPSTREAM_SHA: ${{ steps.upstream.outputs.sha }}
+              shell: bash
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git add -- diyhue/Dockerfile diyhue/config.json
+                  git commit -m "Update diyHue core to ${UPSTREAM_SHA:0:7}"
+                  git push origin HEAD:master
