@@ -1,0 +1,72 @@
+name: Build
+
+on:
+    push:
+        branches:
+            - master
+        paths:
+            - "diyhue/**"
+            - ".github/workflows/build.yml"
+    pull_request:
+        paths:
+            - "diyhue/**"
+            - ".github/workflows/build.yml"
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+concurrency:
+    group: build-${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+jobs:
+    build-aarch64:
+        name: Build aarch64 image
+        runs-on: ubuntu-latest
+        timeout-minutes: 30
+        steps:
+            - name: Check out repository
+              uses: actions/checkout@v4
+
+            - name: Read Home Assistant build settings
+              id: settings
+              shell: bash
+              run: |
+                  base_image="$(jq -r '.build_from.aarch64' diyhue/build.json)"
+                  version="$(jq -r '.version' diyhue/config.json)"
+
+                  if [[ -z "${base_image}" || "${base_image}" == "null" ]]; then
+                      echo "Missing aarch64 base image in diyhue/build.json" >&2
+                      exit 1
+                  fi
+
+                  if [[ -z "${version}" || "${version}" == "null" ]]; then
+                      echo "Missing add-on version in diyhue/config.json" >&2
+                      exit 1
+                  fi
+
+                  echo "base_image=${base_image}" >> "${GITHUB_OUTPUT}"
+                  echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v3
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Build aarch64 image
+              uses: docker/build-push-action@v6
+              with:
+                  context: ./diyhue
+                  file: ./diyhue/Dockerfile
+                  platforms: linux/arm64
+                  push: false
+                  build-args: |
+                      BUILD_FROM=${{ steps.settings.outputs.base_image }}
+                      BUILD_ARCH=aarch64
+                      BUILD_DATE=${{ github.event.repository.updated_at }}
+                      BUILD_REF=${{ github.sha }}
+                      BUILD_VERSION=${{ steps.settings.outputs.version }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max

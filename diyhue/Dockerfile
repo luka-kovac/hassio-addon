@@ -1,4 +1,4 @@
-ARG BUILD_FROM=hassioaddons/base-python:5.3.4
+ARG BUILD_FROM=ghcr.io/home-assistant/base-python:3.13-alpine3.24
 # hadolint ignore=DL3006
 FROM ${BUILD_FROM}
 
@@ -8,10 +8,10 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Set the build architecture and convert it from hassio to diyhue style
 # armhf, armv7, aarch64, amd64, i386
 ARG BUILD_ARCH=aarch64
-ENV BUILD_ARCHI = ${BUILD_ARCH}
+ENV BUILD_ARCHI=${BUILD_ARCH}
 
 # Other settings
-ENV LANG C.UTF-8
+ENV LANG=C.UTF-8
 ENV DIYHUE_VERSION=master
 ENV DIYHUE_COMMIT=ebd0eaf493e1054515a5d996bcb3fea36a154c0f
 ENV DIYHUE_UI_VERSION=v2.0.2
@@ -21,8 +21,7 @@ ENV WORKING_DIR=/opt/hue-emulator
 RUN mkdir diyhue config ${WORKING_DIR}
 
 # Install all needed dependencies
-RUN apk add -q -u python3 openssl nmap psmisc iproute2 alpine-sdk build-base
-RUN apk add --no-cache bluez
+RUN apk add --no-cache openssl nmap psmisc iproute2 alpine-sdk build-base bluez libfaketime
 
 # Download diyhue and unzip it
 RUN curl -sL -o diyhue.zip https://github.com/diyhue/diyHue/archive/${DIYHUE_COMMIT}.zip
@@ -53,18 +52,11 @@ RUN cp -r /diyhueUI/dist/assets			/opt/hue-emulator/flaskUI/
 RUN rm -r /diyhueUI
 RUN rm -r /diyHue-${DIYHUE_COMMIT}
 
-RUN apk --no-cache add --virtual build-deps gcc git make musl-dev \
-	&& git clone https://github.com/wolfcw/libfaketime \
-	&& cd libfaketime \
-	&& git checkout v0.9.10 \
-	&& make \
-	&& mv src/*.so* /lib && mv src/faketime /bin \
-	&& cd - \
-	&& rm -rf libfaketime \
-	&& apk del build-deps
-
 # Set working directory to the Archive folder
 WORKDIR /opt/hue-emulator
+
+# Verify the application and all protocol modules can be imported.
+RUN python3 -c "import configManager"
 
 # Copy additional local build files
 COPY rootfs ./
