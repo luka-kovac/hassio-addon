@@ -1,4 +1,4 @@
-ARG BUILD_FROM=ghcr.io/hassio-addons/base-python:17.0.0
+ARG BUILD_FROM=ghcr.io/home-assistant/base-python:3.13-alpine3.24
 # hadolint ignore=DL3006
 FROM ${BUILD_FROM}
 
@@ -11,7 +11,7 @@ ARG BUILD_ARCH=aarch64
 ENV BUILD_ARCHI=${BUILD_ARCH}
 
 # Other settings
-ENV LANG C.UTF-8
+ENV LANG=C.UTF-8
 ENV DIYHUE_VERSION=master
 ENV DIYHUE_COMMIT=ebd0eaf493e1054515a5d996bcb3fea36a154c0f
 ENV DIYHUE_UI_VERSION=v2.0.2
@@ -21,8 +21,7 @@ ENV WORKING_DIR=/opt/hue-emulator
 RUN mkdir diyhue config ${WORKING_DIR}
 
 # Install all needed dependencies
-RUN apk add -q -u python3 openssl nmap psmisc iproute2 alpine-sdk build-base
-RUN apk add --no-cache bluez
+RUN apk add --no-cache openssl nmap psmisc iproute2 alpine-sdk build-base bluez
 
 # Download diyhue and unzip it
 RUN curl -sL -o diyhue.zip https://github.com/diyhue/diyHue/archive/${DIYHUE_COMMIT}.zip
@@ -65,6 +64,9 @@ RUN apk --no-cache add --virtual build-deps gcc git make musl-dev \
 
 # Set working directory to the Archive folder
 WORKDIR /opt/hue-emulator
+
+# Verify the application and all protocol modules can be imported.
+RUN python3 -c "import configManager"
 
 # Copy additional local build files
 COPY rootfs ./
