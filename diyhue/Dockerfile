@@ -1,4 +1,4 @@
-ARG BUILD_FROM=hassioaddons/base-python:5.3.4
+ARG BUILD_FROM=ghcr.io/hassio-addons/base-python:17.0.0
 # hadolint ignore=DL3006
 FROM ${BUILD_FROM}
 
@@ -8,7 +8,7 @@ SHELL ["/bin/bash", "-o", "pipefail", "-c"]
 # Set the build architecture and convert it from hassio to diyhue style
 # armhf, armv7, aarch64, amd64, i386
 ARG BUILD_ARCH=aarch64
-ENV BUILD_ARCHI = ${BUILD_ARCH}
+ENV BUILD_ARCHI=${BUILD_ARCH}
 
 # Other settings
 ENV LANG C.UTF-8
