@@ -21,7 +21,7 @@ ENV WORKING_DIR=/opt/hue-emulator
 RUN mkdir diyhue config ${WORKING_DIR}
 
 # Install all needed dependencies
-RUN apk add --no-cache openssl nmap psmisc iproute2 alpine-sdk build-base bluez
+RUN apk add --no-cache openssl nmap psmisc iproute2 alpine-sdk build-base bluez libfaketime
 
 # Download diyhue and unzip it
 RUN curl -sL -o diyhue.zip https://github.com/diyhue/diyHue/archive/${DIYHUE_COMMIT}.zip
@@ -51,16 +51,6 @@ RUN cp -r /diyhueUI/dist/index.html			/opt/hue-emulator/flaskUI/templates/
 RUN cp -r /diyhueUI/dist/assets			/opt/hue-emulator/flaskUI/
 RUN rm -r /diyhueUI
 RUN rm -r /diyHue-${DIYHUE_COMMIT}
-
-RUN apk --no-cache add --virtual build-deps gcc git make musl-dev \
-	&& git clone https://github.com/wolfcw/libfaketime \
-	&& cd libfaketime \
-	&& git checkout v0.9.10 \
-	&& make \
-	&& mv src/*.so* /lib && mv src/faketime /bin \
-	&& cd - \
-	&& rm -rf libfaketime \
-	&& apk del build-deps
 
 # Set working directory to the Archive folder
 WORKDIR /opt/hue-emulator
