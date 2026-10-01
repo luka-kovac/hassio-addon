@@ -1,7 +1,7 @@
 {
-    "name": "diyHue",
+    "name": "diyHue Restoration Test",
     "version": "2.0.38",
-    "slug": "diyhue",
+    "slug": "diyhue_restoration_test",
     "description": "Emulate a Hue Bridge, add lights, sensors etc. from different vendors into one Ecosystem",
     "webui": "http://[HOST]:[PORT:80]",
     "panel_icon": "mdi:home-lightbulb",
@@ -21,7 +21,7 @@
         "share:rw"
     ],
     "options": {
-        "config_path": "/config/diyhue",
+        "config_path": "/config/diyhue-restoration-test",
         "mac": "xx:xx:xx:xx:xx:xx",
         "debug": false,
         "no_serve_https": false,
